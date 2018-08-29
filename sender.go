@@ -11,7 +11,7 @@ import (
 )
 
 type Tracer struct {
-	Index      int64
+	Index      int
 	Epoch_time int64
 	Datetime   time.Time
 }
@@ -39,24 +39,29 @@ func main() {
 		fmt.Println(err.Error())
 	}
 
+	if err = cluster.Start(); err != nil {
+		fmt.Println(err.Error())
+	}
+
+	sum := 0
+	for i := 0; i < 10; i++ {
+		storeRecord(i, cluster)
+		sum += i
+		time.Sleep(1 * time.Second)
+	}
+
 	defer func() {
 		if err := cluster.Stop(); err != nil {
 			util.ErrExit(err)
 			fmt.Println(err.Error())
 		}
 	}()
-
-	if err = cluster.Start(); err != nil {
-		fmt.Println(err.Error())
-	}
-
-	storeRecord(cluster)
 }
 
-func storeRecord(cluster *riak.Cluster) {
+func storeRecord(index int, cluster *riak.Cluster) {
 	now := time.Now()
 	tracer := &Tracer{
-		Index:      1,
+		Index:      index,
 		Epoch_time: now.Unix(),
 		Datetime:   now,
 	}
@@ -79,8 +84,7 @@ func storeRecord(cluster *riak.Cluster) {
 	fmt.Println(key)
 
 	cmd, err := riak.NewStoreValueCommandBuilder().
-		WithBucketType("default").
-		WithBucket("test").
+		WithBucket("repl_trace").
 		WithKey(key).
 		WithContent(obj).
 		Build()
@@ -94,7 +98,4 @@ func storeRecord(cluster *riak.Cluster) {
 		fmt.Println(err.Error())
 		return
 	}
-
-	// svc := cmd.(*riak.StoreValueCommand)
-	// rsp := svc.Response
 }
